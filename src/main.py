@@ -1,11 +1,29 @@
 #!/usr/bin/env python2.7
+# -*- encoding: utf-8 -*-
+#
+# This file is part of jottafs.
+# 
+# jottafs is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# jottafs is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with jottafs.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Copyright 2014 Håvard Gulldahl <havard@gulldahl.no>
 
 # import stdlib
-import sys
+import sys, logging
 
 
 # import jottalib
-import jottalib, jottalib.jfstree, jottalib.qt
+import jottalib, jottalib.JFS, jottalib.jfstree, jottalib.qt
 
 
 # import pyqt4
@@ -47,14 +65,22 @@ class JottaGui(QtGui.QMainWindow):
 
     def populateJottaItems(self, idx):
         # some item was double clicked, enter it if it is a folder
-        itempath = unicode(idx.data(QtCore.Qt.UserRole).toString())
-        print 'double cliked: %s' % itempath
-        self.ui.detailsText.setText(itempath)
+        item = idx.internalPointer()
+        print 'double cliked: %s, %s' % (item.path, repr(item))
+        if isinstance(item, (jottalib.JFS.JFSMountPoint, jottalib.JFS.JFSFolder)):
+            logging.debug("lets change path: %s" % item.path)
+            self.jottaModel.jfsChangePath(item.path)
 
     def showJottaDetails(self, idx):
         # some item was single clicked/selected, show details
-        itempath = unicode(idx.data(QtCore.Qt.UserRole).toString())
-        print 'selected: %s' % itempath
+        # itempath = unicode(idx.data(QtCore.Qt.UserRole).toString())
+        item = idx.internalPointer()
+        print 'selected: %s' % item.path
+        coverPix = QtGui.QPixmap()
+        coverPix.loadFromData(item.thumb())
+        # return coverPix.scaled(200,200, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+        self.ui.detailsPix.setPixmap(coverPix)
+        self.ui.detailsText.setText("""<b>Name</b>: %s<br><b>Size:</b> %s""" % (item.name, item.size))
 
     def run(self, app):
         self.show()
