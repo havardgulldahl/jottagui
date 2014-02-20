@@ -24,7 +24,9 @@ class JottaGui(QtGui.QMainWindow):
         self.ui.setupUi(self)
         self.jottaModel = None
         self.loginStatusChanged.connect(self.populateDevices)
-        self.ui.comboDevices.currentIndexChanged[str].connect(self.populateJottaItems)
+        self.ui.comboDevices.currentIndexChanged[str].connect(self.populateJottaRoot)
+        self.ui.listItems.doubleClicked.connect(self.populateJottaItems)
+        self.ui.listItems.clicked.connect(self.showJottaDetails)
 
     def login(self, username, password):
         try:
@@ -36,15 +38,23 @@ class JottaGui(QtGui.QMainWindow):
 
     def populateDevices(self):
         devices = self.jfs.devices()
-        print devices
         self.ui.comboDevices.addItems([d.name for d in devices])
-        self.ui.listItems.setModel(None)
+        self.populateJottaRoot(unicode(self.ui.comboDevices.currentText()))
 
-    def populateJottaItems(self, device):
-        print device
+    def populateJottaRoot(self, device):
         self.jottaModel = jottalib.qt.JFSModel(self.jfs, '/%s' % device)
         self.ui.listItems.setModel(self.jottaModel)
 
+    def populateJottaItems(self, idx):
+        # some item was double clicked, enter it if it is a folder
+        itempath = unicode(idx.data(QtCore.Qt.UserRole).toString())
+        print 'double cliked: %s' % itempath
+        self.ui.detailsText.setText(itempath)
+
+    def showJottaDetails(self, idx):
+        # some item was single clicked/selected, show details
+        itempath = unicode(idx.data(QtCore.Qt.UserRole).toString())
+        print 'selected: %s' % itempath
 
     def run(self, app):
         self.show()
