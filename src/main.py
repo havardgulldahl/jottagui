@@ -76,10 +76,11 @@ class JottaGui(QtGui.QMainWindow):
         # itempath = unicode(idx.data(QtCore.Qt.UserRole).toString())
         item = idx.internalPointer()
         print 'selected: %s' % item.path
-        coverPix = QtGui.QPixmap()
-        coverPix.loadFromData(item.thumb())
-        # return coverPix.scaled(200,200, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-        self.ui.detailsPix.setPixmap(coverPix)
+        if isinstance(item, jottalib.JFS.JFSFile):
+            coverPix = QtGui.QPixmap()
+            coverPix.loadFromData(item.thumb())
+            # coverPix = coverPix.scaled(200,200, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+            self.ui.detailsPix.setPixmap(coverPix)
         self.ui.detailsText.setText("""<b>Name</b>: %s<br><b>Size:</b> %s""" % (item.name, item.size))
 
     def run(self, app):
