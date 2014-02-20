@@ -16,32 +16,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="1" column="0">
-     <widget class="QListView" name="listFiles">
-      <property name="acceptDrops">
-       <bool>true</bool>
-      </property>
-      <property name="toolTip">
-       <string>Files</string>
-      </property>
-      <property name="editTriggers">
-       <set>QAbstractItemView::DoubleClicked</set>
-      </property>
-      <property name="dragEnabled">
-       <bool>true</bool>
-      </property>
-      <property name="dragDropMode">
-       <enum>QAbstractItemView::DragDrop</enum>
-      </property>
-      <property name="defaultDropAction">
-       <enum>Qt::CopyAction</enum>
-      </property>
-      <property name="alternatingRowColors">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="0">
-     <widget class="QListView" name="listFolders">
+     <widget class="QListView" name="listItems">
       <property name="toolTip">
        <string>Folders</string>
       </property>
@@ -53,7 +28,10 @@
       </property>
      </widget>
     </item>
-    <item row="0" column="1" rowspan="2">
+    <item row="0" column="0">
+     <widget class="QComboBox" name="comboDevices"/>
+    </item>
+    <item row="0" column="2" rowspan="3">
      <widget class="QGroupBox" name="detailsBox">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">

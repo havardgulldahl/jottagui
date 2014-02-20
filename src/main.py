@@ -5,7 +5,7 @@ import sys
 
 
 # import jottalib
-import jottalib, jottalib.qt
+import jottalib, jottalib.jfstree, jottalib.qt
 
 
 # import pyqt4
@@ -22,19 +22,28 @@ class JottaGui(QtGui.QMainWindow):
         self.app = app
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.loginStatusChanged.connect(self.populate)
+        self.jottaModel = None
+        self.loginStatusChanged.connect(self.populateDevices)
+        self.ui.comboDevices.currentIndexChanged[str].connect(self.populateJottaItems)
 
     def login(self, username, password):
         try:
-            self.jfs = jottalib.qt.JFSModel(username, password)
+            self.jfs = jottalib.jfstree.JFSTree(username, password)
             self.loginStatusChanged.emit(True)
-            self.ui.listFolders.setModel(self.jfs)
         except Exception as e:
             print e
             self.loginStatusChanged.emit(False)
 
-    def populate(self):
-        print list(self.jfs.devices)
+    def populateDevices(self):
+        devices = self.jfs.devices()
+        print devices
+        self.ui.comboDevices.addItems([d.name for d in devices])
+        self.ui.listItems.setModel(None)
+
+    def populateJottaItems(self, device):
+        print device
+        self.jottaModel = jottalib.qt.JFSModel(self.jfs, '/%s' % device)
+        self.ui.listItems.setModel(self.jottaModel)
 
 
     def run(self, app):
