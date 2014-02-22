@@ -21,7 +21,6 @@
 # import stdlib
 import sys, logging
 
-
 # import jottalib
 import jottalib, jottalib.JFS, jottalib.jfstree, jottalib.qt
 
@@ -42,26 +41,31 @@ class JottaGui(QtGui.QMainWindow):
         self.ui.setupUi(self)
         self.jottaModel = None
         self.loginStatusChanged.connect(self.populateDevices)
-        self.ui.comboDevices.currentIndexChanged[str].connect(self.populateJottaRoot)
-        self.ui.listItems.doubleClicked.connect(self.populateJottaItems)
-        self.ui.listItems.clicked.connect(self.showJottaDetails)
+        self.ui.listDevices.currentIndexChanged[str].connect(self.populateJottaRoot)
+        # self.ui.jottafsView.doubleClicked.connect(self.populateJottaItems)
+        self.ui.jottafsView.clicked.connect(self.populateChildNodes)
+        # self.ui.video.hide()
+        # self.ui.details.hide()
 
     def login(self, username, password):
         try:
-            self.jfs = jottalib.jfstree.JFSTree(username, password)
+            self.jfs = jottalib.JFS.JFS(username, password)
             self.loginStatusChanged.emit(True)
         except Exception as e:
             print e
             self.loginStatusChanged.emit(False)
 
+    def populateChildNodes(self, idx):
+        self.jottaModel.populateChildNodes(idx) # pass it on to model to expand children
+
     def populateDevices(self):
-        devices = self.jfs.devices()
-        self.ui.comboDevices.addItems([d.name for d in devices])
-        self.populateJottaRoot(unicode(self.ui.comboDevices.currentText()))
+        # devices = self.jfs.devices()
+        self.ui.listDevices.addItems([d.name for d in self.jfs.devices])
+        self.populateJottaRoot(unicode(self.ui.listDevices.currentText()))
 
     def populateJottaRoot(self, device):
         self.jottaModel = jottalib.qt.JFSModel(self.jfs, '/%s' % device)
-        self.ui.listItems.setModel(self.jottaModel)
+        self.ui.jottafsView.setModel(self.jottaModel)
 
     def populateJottaItems(self, idx):
         # some item was double clicked, enter it if it is a folder
@@ -80,8 +84,8 @@ class JottaGui(QtGui.QMainWindow):
             coverPix = QtGui.QPixmap()
             coverPix.loadFromData(item.thumb())
             # coverPix = coverPix.scaled(200,200, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-            self.ui.detailsPix.setPixmap(coverPix)
-        self.ui.detailsText.setText("""<b>Name</b>: %s<br><b>Size:</b> %s""" % (item.name, item.size))
+            self.ui.preview.setPixmap(coverPix)
+        self.ui.metadata.setText("""<b>Name</b>: %s<br><b>Size:</b> %s""" % (item.name, item.size))
 
     def run(self, app):
         self.show()
