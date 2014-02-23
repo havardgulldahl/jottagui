@@ -83,13 +83,12 @@ class JottaGui(QtGui.QMainWindow):
         print 'selected: %s' % unicode(item.text())
         __details = self.ui.jottafsView.previewWidget()
         __details.findChild(QtGui.QLabel, 'details').setText("""<b>Name</b>: %s<br><b>Size:</b> %s""" % (item.obj.name, item.obj.path))
-        return
-        if isinstance(item, jottalib.JFS.JFSFile):
+        if isinstance(item, jottalib.qt.JFSFileNode) and item.obj.is_image():
+            logging.debug('%s is an image, get thumb' % item.obj.name)
             coverPix = QtGui.QPixmap()
-            coverPix.loadFromData(item.thumb())
+            coverPix.loadFromData(item.obj.thumb())
             # coverPix = coverPix.scaled(200,200, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-            self.ui.preview.setPixmap(coverPix)
-        self.ui.metadata.setText("""<b>Name</b>: %s<br><b>Size:</b> %s""" % (item.name, item.size))
+            __details.findChild(QtGui.QLabel, 'thumbnail').setPixmap(coverPix)
 
     def run(self, app):
         self.show()
