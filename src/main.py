@@ -42,10 +42,18 @@ class JottaGui(QtGui.QMainWindow):
         self.jottaModel = None
         self.loginStatusChanged.connect(self.populateDevices)
         self.ui.listDevices.currentIndexChanged[str].connect(self.populateJottaRoot)
-        # self.ui.jottafsView.doubleClicked.connect(self.populateJottaItems)
-        self.ui.jottafsView.clicked.connect(self.populateChildNodes)
-        # self.ui.video.hide()
-        # self.ui.details.hide()
+        __preview = QtGui.QWidget()
+        __layout = QtGui.QVBoxLayout()
+        __thumbnail = QtGui.QLabel(__preview)
+        __thumbnail.setObjectName('thumbnail')
+        __layout.addWidget(__thumbnail)
+        __details = QtGui.QLabel(__preview)
+        __details.setObjectName('details')
+        __layout.addWidget(__details)
+        __preview.setLayout(__layout)
+        self.ui.jottafsView.setPreviewWidget(__preview)
+        # self.ui.jottafsView.clicked.connect(self.populateChildNodes)
+        # self.ui.jottafsView.clicked.connect(self.showJottaDetails)
 
     def login(self, username, password):
         try:
@@ -55,8 +63,9 @@ class JottaGui(QtGui.QMainWindow):
             print e
             self.loginStatusChanged.emit(False)
 
-    def populateChildNodes(self, idx):
+    def populateChildNodes(self, idx, oldidx):
         self.jottaModel.populateChildNodes(idx) # pass it on to model to expand children
+        self.showJottaDetails(idx)
 
     def populateDevices(self):
         # devices = self.jfs.devices()
@@ -66,20 +75,15 @@ class JottaGui(QtGui.QMainWindow):
     def populateJottaRoot(self, device):
         self.jottaModel = jottalib.qt.JFSModel(self.jfs, '/%s' % device)
         self.ui.jottafsView.setModel(self.jottaModel)
-
-    def populateJottaItems(self, idx):
-        # some item was double clicked, enter it if it is a folder
-        item = idx.internalPointer()
-        print 'double cliked: %s, %s' % (item.path, repr(item))
-        if isinstance(item, (jottalib.JFS.JFSMountPoint, jottalib.JFS.JFSFolder)):
-            logging.debug("lets change path: %s" % item.path)
-            self.jottaModel.jfsChangePath(item.path)
+        self.ui.jottafsView.selectionModel().currentChanged.connect(self.populateChildNodes)
 
     def showJottaDetails(self, idx):
         # some item was single clicked/selected, show details
-        # itempath = unicode(idx.data(QtCore.Qt.UserRole).toString())
-        item = idx.internalPointer()
-        print 'selected: %s' % item.path
+        item = self.jottaModel.itemFromIndex(idx)
+        print 'selected: %s' % unicode(item.text())
+        __details = self.ui.jottafsView.previewWidget()
+        __details.findChild(QtGui.QLabel, 'details').setText("""<b>Name</b>: %s<br><b>Size:</b> %s""" % (item.obj.name, item.obj.path))
+        return
         if isinstance(item, jottalib.JFS.JFSFile):
             coverPix = QtGui.QPixmap()
             coverPix.loadFromData(item.thumb())
