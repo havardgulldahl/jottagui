@@ -2,20 +2,20 @@
 # -*- encoding: utf-8 -*-
 #
 # This file is part of jottafs.
-# 
+#
 # jottafs is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # jottafs is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with jottafs.  If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 # Copyright 2014 Håvard Gulldahl <havard@gulldahl.no>
 
 # import stdlib
@@ -52,6 +52,8 @@ class JottaGui(QtGui.QMainWindow):
         __layout.addWidget(__details)
         __preview.setLayout(__layout)
         self.ui.jottafsView.setPreviewWidget(__preview)
+        self.ui.getButton.clicked.connect(self.get)
+
         # self.ui.jottafsView.clicked.connect(self.populateChildNodes)
         # self.ui.jottafsView.clicked.connect(self.showJottaDetails)
 
@@ -80,15 +82,31 @@ class JottaGui(QtGui.QMainWindow):
     def showJottaDetails(self, idx):
         # some item was single clicked/selected, show details
         item = self.jottaModel.itemFromIndex(idx)
-        print 'selected: %s' % unicode(item.text())
+        logging.debug('selected: %s' % unicode(item.text()))
         __details = self.ui.jottafsView.previewWidget()
-        __details.findChild(QtGui.QLabel, 'details').setText("""<b>Name</b>: %s<br><b>Size:</b> %s""" % (item.obj.name, item.obj.path))
+        __details.findChild(QtGui.QLabel, 'details').setText("""
+        <b>Name</b>: %s<br><b>Size:</b> %s<br><b>Created</b>: %s<br><b>Modified</b>:%s""" % \
+                                                             (item.obj.name, item.obj.size,
+                                                              item.obj.created, item.obj.modified))
+        __preview = __details.findChild(QtGui.QLabel, 'thumbnail')
+        __coverPix = QtGui.QPixmap()
         if isinstance(item, jottalib.qt.JFSFileNode) and item.obj.is_image():
             logging.debug('%s is an image, get thumb' % item.obj.name)
-            coverPix = QtGui.QPixmap()
-            coverPix.loadFromData(item.obj.thumb())
+            __coverPix.loadFromData(item.obj.thumb(jottalib.JFS.JFSFile.MEDIUMTHUMB))
             # coverPix = coverPix.scaled(200,200, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-            __details.findChild(QtGui.QLabel, 'thumbnail').setPixmap(coverPix)
+        __preview.setPixmap(__coverPix)
+
+    def get(self):
+        "Download current selected resource"
+        dlfolder = QtGui.QDesktopServices.storageLocation(QtGui.QDesktopServices.PicturesLocation)
+        selected = [self.jottaModel.itemFromIndex(idx) for idx in self.ui.jottafsView.selectedIndexes()]
+        for item in selected:
+            if isinstance(item, jottalib.qt.JFSFileNode):
+                logging.debug('downloading %s ...' % item.obj.name)
+                with open(os.path.join(dlfolder, '%s-jotta%s' % (item.obj.name, item.obj.revisionNumber), 'w+b') as f:
+                    f.write(item.obj.read())
+                    logging.info("Wrote %s", f.name)
+
 
     def run(self, app):
         self.show()
@@ -117,7 +135,7 @@ def rungui(argv, username, password):
     if sys.platform == 'win32':
         # default win32 looks awful, make it pretty
         # docs advise to do this before QApplication() is started
-        QtGui.QApplication.setStyle("cleanlooks") 
+        QtGui.QApplication.setStyle("cleanlooks")
     app = QtGui.QApplication(argv)
     if sys.platform == 'win32':
         def setfont(fontname):
