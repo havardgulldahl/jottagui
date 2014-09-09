@@ -50,10 +50,12 @@ class JottaGui(QtGui.QMainWindow):
         __details = QtGui.QLabel(__preview)
         __details.setObjectName('details')
         __layout.addWidget(__details)
+        __get = QtGui.QPushButton('Get')
+        __layout.addWidget(__get)
         __preview.setLayout(__layout)
+        __get.clicked.connect(self.get)
         self.ui.jottafsView.setPreviewWidget(__preview)
-        self.ui.getButton.clicked.connect(self.get)
-
+        #self.ui.statusbar = QtGui.QStatusBar(self.ui.centralwidget)
         # self.ui.jottafsView.clicked.connect(self.populateChildNodes)
         # self.ui.jottafsView.clicked.connect(self.showJottaDetails)
 
@@ -66,6 +68,7 @@ class JottaGui(QtGui.QMainWindow):
             self.loginStatusChanged.emit(False)
 
     def populateChildNodes(self, idx, oldidx):
+        logging.debug('populateChildNodes(self, %s, %s)' % (idx, oldidx))
         self.jottaModel.populateChildNodes(idx) # pass it on to model to expand children
         self.showJottaDetails(idx)
 
@@ -84,16 +87,19 @@ class JottaGui(QtGui.QMainWindow):
         item = self.jottaModel.itemFromIndex(idx)
         logging.debug('selected: %s' % unicode(item.text()))
         __details = self.ui.jottafsView.previewWidget()
-        __details.findChild(QtGui.QLabel, 'details').setText("""
-        <b>Name</b>: %s<br><b>Size:</b> %s<br><b>Created</b>: %s<br><b>Modified</b>:%s""" % \
-                                                             (item.obj.name, item.obj.size,
-                                                              item.obj.created, item.obj.modified))
+        if isinstance(item, jottalib.qt.JFSFileNode):
+            s = """<b>Name</b>: %s<br><b>Size:</b> %s<br>
+                   <b>Created</b>: %s<br><b>Modified</b>:%s""" % \
+                                                             (item.obj.name, sizeof_fmt(item.obj.size),
+                                                              item.obj.created, item.obj.modified)
+        else:
+            s = """<b>Name</b>: %s<br>"""  % (item.obj.name,)
+        __details.findChild(QtGui.QLabel, 'details').setText(s)
         __preview = __details.findChild(QtGui.QLabel, 'thumbnail')
         __coverPix = QtGui.QPixmap()
         if isinstance(item, jottalib.qt.JFSFileNode) and item.obj.is_image():
             logging.debug('%s is an image, get thumb' % item.obj.name)
             __coverPix.loadFromData(item.obj.thumb(jottalib.JFS.JFSFile.MEDIUMTHUMB))
-            # coverPix = coverPix.scaled(200,200, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         __preview.setPixmap(__coverPix)
 
     def get(self):
@@ -103,9 +109,13 @@ class JottaGui(QtGui.QMainWindow):
         for item in selected:
             if isinstance(item, jottalib.qt.JFSFileNode):
                 logging.debug('downloading %s ...' % item.obj.name)
-                with open(os.path.join(dlfolder, '%s-jotta%s' % (item.obj.name, item.obj.revisionNumber), 'w+b') as f:
-                    f.write(item.obj.read())
-                    logging.info("Wrote %s", f.name)
+                base,ext = os.path.splitext(item.obj.name)
+                with open(os.path.join(dlfolder, '%s-%s%s' % (base, item.obj.uuid, ext)), 'w+b') as f:
+                    #f.write(item.obj.read())
+                    #logging.info("Wrote %s", f.name)
+                    for c in item.obj.stream():
+                        f.write(c)
+                        logging.info('wrote chunk of %s', f.name)
 
 
     def run(self, app):
@@ -147,6 +157,15 @@ def rungui(argv, username, password):
     o = JottaGui(app)
     o.login(username, password)
     o.run(app)
+
+def sizeof_fmt(num, use_kibibyte=True):
+    # from http://stackoverflow.com/a/18289245
+    base, suffix = [(1000.,'B'),(1024.,'iB')][use_kibibyte]
+    for x in ['B'] + map(lambda x: x+suffix, list('kMGTP')):
+        if -base < num < base:
+            return "%3.1f %s" % (num, x)
+        num /= base
+    return "%3.1f %s" % (num, x)
 
 if __name__ == '__main__':
     import os
