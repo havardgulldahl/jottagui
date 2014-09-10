@@ -100,7 +100,32 @@
      <height>22</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuMain">
+    <property name="title">
+     <string>Main</string>
+    </property>
+    <addaction name="actionLogin"/>
+    <addaction name="separator"/>
+    <addaction name="actionAbout_votta"/>
+    <addaction name="actionLicenses"/>
+   </widget>
+   <addaction name="menuMain"/>
   </widget>
+  <action name="actionAbout_votta">
+   <property name="text">
+    <string>About votta</string>
+   </property>
+  </action>
+  <action name="actionLicenses">
+   <property name="text">
+    <string>Licenses</string>
+   </property>
+  </action>
+  <action name="actionLogin">
+   <property name="text">
+    <string>Login</string>
+   </property>
+  </action>
  </widget>
  <tabstops>
   <tabstop>listDevices</tabstop>

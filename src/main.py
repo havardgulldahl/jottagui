@@ -31,12 +31,44 @@ from PyQt4 import QtGui, QtCore
 # import jottagui
 from ui.main_ui import Ui_MainWindow
 
+class LoginDialog(QtGui.QDialog):
+    def __init__(self, parent = None):
+        super(LoginDialog, self).__init__(parent)
+
+        layout = QtGui.QHBoxLayout(self)
+
+        self.username = QtGui.QLineEdit(self)
+        layout.addWidget(self.username)
+        self.password = QtGui.QLineEdit(self)
+        self.password.setEchoMode(QtGui.QLineEdit.PasswordEchoOnEdit )
+        layout.addWidget(self.password)
+
+        # OK and Cancel buttons
+        self.buttons = QtGui.QDialogButtonBox(
+            QtGui.QDialogButtonBox.Ok | QtGui.QDialogButtonBox.Cancel,
+            QtCore.Qt.Horizontal, self)
+        layout.addWidget(self.buttons)
+
+    # get current date and time from the dialog
+    def userpass(self):
+        return (self.username.text(), self.password.text())
+
+    # static method to create the dialog and return (date, time, accepted)
+    @staticmethod
+    def getLogin(parent = None):
+        dialog = LoginDialog(parent)
+        dialog.buttons.accepted.connect(dialog.accept)
+        dialog.buttons.rejected.connect(dialog.reject)
+        result = dialog.exec_()
+        return (dialog.userpass(), result == QtGui.QDialog.Accepted)
+
 class JottaGui(QtGui.QMainWindow):
     loginStatusChanged = QtCore.pyqtSignal(bool)
 
-    def __init__(self, app, parent=None):
+    def __init__(self, app, path_to_ca_bundle, parent=None):
         super(JottaGui, self).__init__(parent)
         self.app = app
+        self.ca_bundle = path_to_ca_bundle
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.jottaModel = None
@@ -58,24 +90,36 @@ class JottaGui(QtGui.QMainWindow):
         #self.ui.statusbar = QtGui.QStatusBar(self.ui.centralwidget)
         # self.ui.jottafsView.clicked.connect(self.populateChildNodes)
         # self.ui.jottafsView.clicked.connect(self.showJottaDetails)
+        self.ui.actionLogin.triggered.connect(self.showModalLogin)
 
     def login(self, username, password):
         try:
-            self.jfs = jottalib.JFS.JFS(username, password)
+            self.jfs = jottalib.JFS.JFS(username, password, self.ca_bundle)
             self.loginStatusChanged.emit(True)
         except Exception as e:
             print e
             self.loginStatusChanged.emit(False)
+
+    def showModalLogin(self):
+        usernamepassword, ok = LoginDialog.getLogin()
+        if ok:
+            u,p = usernamepassword
+            logging.debug('Got login %s', u)
+            self.login(u, p)
+
 
     def populateChildNodes(self, idx, oldidx):
         logging.debug('populateChildNodes(self, %s, %s)' % (idx, oldidx))
         self.jottaModel.populateChildNodes(idx) # pass it on to model to expand children
         self.showJottaDetails(idx)
 
-    def populateDevices(self):
+    def populateDevices(self, loggedin):
         # devices = self.jfs.devices()
-        self.ui.listDevices.addItems([d.name for d in self.jfs.devices])
-        self.populateJottaRoot(unicode(self.ui.listDevices.currentText()))
+        if not loggedin:
+            self.ui.listDevices.clear()
+        else:
+            self.ui.listDevices.addItems([d.name for d in self.jfs.devices])
+            self.populateJottaRoot(unicode(self.ui.listDevices.currentText()))
 
     def populateJottaRoot(self, device):
         self.jottaModel = jottalib.qt.JFSModel(self.jfs, '/%s' % device)
@@ -154,8 +198,11 @@ def rungui(argv, username, password):
         # default win32 looks awful, make it pretty
         for z in ['Lucida Sans Unicode', 'Arial Unicode MS', 'Verdana']:
             if setfont(z): break
-    o = JottaGui(app)
-    o.login(username, password)
+    cacert = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cacert.pem')
+    logging.info('using cacert.pem from %s', cacert)
+    o = JottaGui(app, path_to_ca_bundle=cacert)
+    if username is not None and password is not None:
+        o.login(username, password)
     o.run(app)
 
 def sizeof_fmt(num, use_kibibyte=True):
@@ -169,4 +216,5 @@ def sizeof_fmt(num, use_kibibyte=True):
 
 if __name__ == '__main__':
     import os
-    rungui(sys.argv, os.environ['JOTTACLOUD_USERNAME'], os.environ['JOTTACLOUD_PASSWORD'])
+    rungui(sys.argv, os.environ.get('JOTTACLOUD_USERNAME', None),
+                     os.environ.get('JOTTACLOUD_PASSWORD', None))
