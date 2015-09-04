@@ -64,9 +64,37 @@ class LoginDialog(QtGui.QDialog):
         result = dialog.exec_()
         return (dialog.userpass(), result == QtGui.QDialog.Accepted)
 
+
+class Downloader(QtCore.QObject):
+    "Threaded class to do our download while not blocking the gui"
+    finished = QtCore.pyqtSignal()
+    progress = QtCore.pyqtSignal(int)
+
+    def __init__(self, jottafile, localpath, parent=None):
+        super(Downloader, self).__init__(parent)
+        self.jottafile = jottafile
+        self.localpath = localpath
+
+    def stream(self):
+        "convenience method to stream (save) a jottafile to localpath"
+        with open(self.localpath, 'w+b') as f:
+            total = float(self.jottafile.size)
+            current = 0.0
+            for c in self.jottafile.stream():
+                f.write(c)
+                current = current + len(c)
+                progress = current/total*100
+                self.progress.emit(progress)
+                logging.debug('wrote chunk of %s, %s/%s', self.jottafile.name, current, total)
+        self.finished.emit()
+
+
+
 class JottaGui(QtGui.QMainWindow):
     loginStatusChanged = QtCore.pyqtSignal(bool)
-    downloading = QtCore.pyqtSignal(bool)
+    downloading = QtCore.pyqtSignal(bool) # a boolean flag to indicate download activity
+    progress = QtCore.pyqtSignal(int)     # an integer (0-100) to indicate progress
+    notification = QtCore.pyqtSignal(unicode)  # a string with noteworthy content
 
     def __init__(self, app, parent=None):
         super(JottaGui, self).__init__(parent)
@@ -94,6 +122,8 @@ class JottaGui(QtGui.QMainWindow):
         # self.ui.jottafsView.clicked.connect(self.showJottaDetails)
         self.ui.actionLogin.triggered.connect(self.showModalLogin)
         self.downloading.connect(self.downloadActive)
+        self.progress.connect(lambda x: self.ui.progressBar.setValue(x))
+        self.notification.connect(lambda x: self.notify(x))
 
     def login(self, username, password):
         try:
@@ -131,6 +161,7 @@ class JottaGui(QtGui.QMainWindow):
 
     def showJottaDetails(self, idx):
         # some item was single clicked/selected, show details
+        self.progress.emit(0)
         item = self.jottaModel.itemFromIndex(idx)
         logging.debug('selected: %s' % unicode(item.text()))
         __details = self.ui.jottafsView.previewWidget()
@@ -164,19 +195,27 @@ class JottaGui(QtGui.QMainWindow):
 
         dlfolder = QtGui.QDesktopServices.storageLocation(QtGui.QDesktopServices.PicturesLocation)
         selected = [self.jottaModel.itemFromIndex(idx) for idx in self.ui.jottafsView.selectedIndexes()]
+        self.progress.emit(0)
+        self.threads = []
+        self.downloads = []
+        self.downloading.emit(False)
         for item in selected:
             if isinstance(item, jottalib.qt.JFSFileNode):
                 logging.debug('downloading %s ...' % item.obj.name)
                 base,ext = os.path.splitext(item.obj.name)
+                p = os.path.join(dlfolder, '%s-%s%s' % (base, item.obj.uuid, ext))
+                T = QtCore.QThread()
+                down = Downloader(item.obj, p)
+                down.moveToThread(T)
+                down.finished.connect(T.quit)
+                down.finished.connect(lambda: self.notify("%s downloaded to %s" % (item.obj.name, p)))
+                down.finished.connect(lambda: self.downloading.emit(False))
+                down.progress.connect(self.ui.progressBar.setValue)
+                T.started.connect(down.stream)
                 self.downloading.emit(True)
-                with open(os.path.join(dlfolder, '%s-%s%s' % (base, item.obj.uuid, ext)), 'w+b') as f:
-                    #f.write(item.obj.read())
-                    #logging.info("Wrote %s", f.name)
-                    for c in item.obj.stream():
-                        f.write(c)
-                        logging.info('wrote chunk of %s', f.name)
-                self.notify("%s downloaded to %s" % (item.obj.name, dlfolder))
-                self.downloading.emit(False)
+                T.start()
+                self.threads.append(T)
+                self.downloads.append(down)
 
 
     def notify(self, msg):
@@ -253,5 +292,5 @@ if __name__ == '__main__':
         username = os.environ.get('JOTTACLOUD_USERNAME', None)
         password = os.environ.get('JOTTACLOUD_PASSWORD', None)
 
-
+    #logging.basicConfig(level=logging.DEBUG)
     rungui(sys.argv, username, password)
