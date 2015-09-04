@@ -15,3 +15,7 @@ Install dependency::
 
   pip install jottalib[Qt]
   
+Install this::
+
+  pip install git+https://github.com/havardgulldahl/jottalib.git@v0.1.0
+  
