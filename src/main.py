@@ -66,6 +66,7 @@ class LoginDialog(QtGui.QDialog):
 
 class JottaGui(QtGui.QMainWindow):
     loginStatusChanged = QtCore.pyqtSignal(bool)
+    downloading = QtCore.pyqtSignal(bool)
 
     def __init__(self, app, parent=None):
         super(JottaGui, self).__init__(parent)
@@ -83,15 +84,16 @@ class JottaGui(QtGui.QMainWindow):
         __details = QtGui.QLabel(__preview)
         __details.setObjectName('details')
         __layout.addWidget(__details)
-        __get = QtGui.QPushButton('Get')
-        __layout.addWidget(__get)
+        self.btnget = QtGui.QPushButton('Get')
+        __layout.addWidget(self.btnget)
         __preview.setLayout(__layout)
-        __get.clicked.connect(self.get)
+        self.btnget.clicked.connect(self.get)
         self.ui.jottafsView.setPreviewWidget(__preview)
         #self.ui.statusbar = QtGui.QStatusBar(self.ui.centralwidget)
         # self.ui.jottafsView.clicked.connect(self.populateChildNodes)
         # self.ui.jottafsView.clicked.connect(self.showJottaDetails)
         self.ui.actionLogin.triggered.connect(self.showModalLogin)
+        self.downloading.connect(self.downloadActive)
 
     def login(self, username, password):
         try:
@@ -166,13 +168,30 @@ class JottaGui(QtGui.QMainWindow):
             if isinstance(item, jottalib.qt.JFSFileNode):
                 logging.debug('downloading %s ...' % item.obj.name)
                 base,ext = os.path.splitext(item.obj.name)
+                self.downloading.emit(True)
                 with open(os.path.join(dlfolder, '%s-%s%s' % (base, item.obj.uuid, ext)), 'w+b') as f:
                     #f.write(item.obj.read())
                     #logging.info("Wrote %s", f.name)
                     for c in item.obj.stream():
                         f.write(c)
                         logging.info('wrote chunk of %s', f.name)
+                self.notify("%s downloaded to %s" % (item.obj.name, dlfolder))
+                self.downloading.emit(False)
 
+
+    def notify(self, msg):
+        "Popup a non-intrusive textual notification"
+        logging.info(msg)
+        if not QtGui.QSystemTrayIcon.supportsMessages():
+            return False
+
+        pop = QtGui.QSystemTrayIcon()
+        pop.showMessage(u'JottaGui', msg)
+
+    def downloadActive(self, boolean):
+        "Called when a download is active and when it finishes"
+        self.btnget.setText('Downloading...' if boolean else 'Get')
+        self.btnget.setDisabled(boolean)
 
     def run(self, app):
         self.show()
