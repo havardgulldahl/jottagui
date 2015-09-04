@@ -91,6 +91,21 @@
     </item>
     <item row="0" column="0">
      <widget class="QProgressBar" name="progressBar">
+      <property name="styleSheet">
+       <string notr="true">QProgressBar {
+    border-radius: 5px;
+    text-align: center;
+	height: 3px;
+}
+
+QProgressBar::chunk {
+    background-color: #05B8CC;
+    width: 10px;
+	margin: 0.5px;
+}
+
+</string>
+      </property>
       <property name="value">
        <number>0</number>
       </property>
