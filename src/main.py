@@ -279,7 +279,12 @@ def sizeof_fmt(num, use_kibibyte=True):
     return "%3.1f %s" % (num, x)
 
 if __name__ == '__main__':
-    import os, netrc
+    import os, netrc, argparse
+    parser = argparse.ArgumentParser(description='A minimalistic gui to get files from JottaCloud.',
+                                     epilog='Note: This program will pick up JOTTACLOUD_USERNAME and JOTTACLOUD_PASSWORD from the running environment, or from your ~/.netrc')
+    parser.add_argument('--loglevel', help='Set the output level, from DEBUG to ERROR', default='ERROR',
+                        choices=['ERROR', 'WARNING', 'INFO', 'DEBUG'])
+    args = parser.parse_args()
     try:
         n = netrc.netrc()
         username, account, password = n.authenticators('jottacloud') # read .netrc entry for 'machine jottacloud'
@@ -287,5 +292,5 @@ if __name__ == '__main__':
         username = os.environ.get('JOTTACLOUD_USERNAME', None)
         password = os.environ.get('JOTTACLOUD_PASSWORD', None)
 
-    #logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=getattr(logging, args.loglevel))
     rungui(sys.argv, username, password)
