@@ -16,13 +16,15 @@
 # You should have received a copy of the GNU General Public License
 # along with jottafs.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2014 Håvard Gulldahl <havard@gulldahl.no>
+# Copyright 2014-2015 Håvard Gulldahl <havard@gulldahl.no>
 
 # import stdlib
 import sys, logging
+logging.captureWarnings(True)
+
 
 # import jottalib
-import jottalib, jottalib.JFS, jottalib.jfstree, jottalib.qt
+import jottalib, jottalib.JFS, jottalib.qt
 
 
 # import pyqt4
@@ -65,10 +67,9 @@ class LoginDialog(QtGui.QDialog):
 class JottaGui(QtGui.QMainWindow):
     loginStatusChanged = QtCore.pyqtSignal(bool)
 
-    def __init__(self, app, path_to_ca_bundle, parent=None):
+    def __init__(self, app, parent=None):
         super(JottaGui, self).__init__(parent)
         self.app = app
-        self.ca_bundle = path_to_ca_bundle
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.jottaModel = None
@@ -94,10 +95,10 @@ class JottaGui(QtGui.QMainWindow):
 
     def login(self, username, password):
         try:
-            self.jfs = jottalib.JFS.JFS(username, password, self.ca_bundle)
+            self.jfs = jottalib.JFS.JFS(username, password)
             self.loginStatusChanged.emit(True)
         except Exception as e:
-            print e
+            logging.exception(e)
             self.loginStatusChanged.emit(False)
 
     def showModalLogin(self):
@@ -148,6 +149,17 @@ class JottaGui(QtGui.QMainWindow):
 
     def get(self):
         "Download current selected resource"
+        # TODO find dlfolder based on content.
+        # QDesktopServices::DesktopLocation	0	Returns the user's desktop directory.
+        # QDesktopServices::DocumentsLocation	1	Returns the user's document.
+        # QDesktopServices::FontsLocation	2	Returns the user's fonts.
+        # QDesktopServices::ApplicationsLocation	3	Returns the user's applications.
+        # QDesktopServices::MusicLocation	4	Returns the users music.
+        # QDesktopServices::MoviesLocation	5	Returns the user's movies.
+        # QDesktopServices::PicturesLocation	6	Returns the user's pictures.
+        # QDesktopServices::TempLocation	7	Returns the system's temporary directory.
+        # QDesktopServices::HomeLocation 8	Returns the user's home directory.
+
         dlfolder = QtGui.QDesktopServices.storageLocation(QtGui.QDesktopServices.PicturesLocation)
         selected = [self.jottaModel.itemFromIndex(idx) for idx in self.ui.jottafsView.selectedIndexes()]
         for item in selected:
@@ -198,12 +210,11 @@ def rungui(argv, username, password):
         # default win32 looks awful, make it pretty
         for z in ['Lucida Sans Unicode', 'Arial Unicode MS', 'Verdana']:
             if setfont(z): break
-    cacert = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cacert.pem')
-    logging.info('using cacert.pem from %s', cacert)
-    o = JottaGui(app, path_to_ca_bundle=cacert)
+    o = JottaGui(app)
     if username is not None and password is not None:
         o.login(username, password)
     o.run(app)
+
 
 def sizeof_fmt(num, use_kibibyte=True):
     # from http://stackoverflow.com/a/18289245
@@ -215,6 +226,13 @@ def sizeof_fmt(num, use_kibibyte=True):
     return "%3.1f %s" % (num, x)
 
 if __name__ == '__main__':
-    import os
-    rungui(sys.argv, os.environ.get('JOTTACLOUD_USERNAME', None),
-                     os.environ.get('JOTTACLOUD_PASSWORD', None))
+    import os, netrc
+    try:
+        n = netrc.netrc()
+        username, account, password = n.authenticators('jottacloud') # read .netrc entry for 'machine jottacloud'
+    except:
+        username = os.environ.get('JOTTACLOUD_USERNAME', None)
+        password = os.environ.get('JOTTACLOUD_PASSWORD', None)
+
+
+    rungui(sys.argv, username, password)
