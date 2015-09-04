@@ -94,7 +94,6 @@ class JottaGui(QtGui.QMainWindow):
     loginStatusChanged = QtCore.pyqtSignal(bool)
     downloading = QtCore.pyqtSignal(bool) # a boolean flag to indicate download activity
     progress = QtCore.pyqtSignal(int)     # an integer (0-100) to indicate progress
-    notification = QtCore.pyqtSignal(unicode)  # a string with noteworthy content
 
     def __init__(self, app, parent=None):
         super(JottaGui, self).__init__(parent)
@@ -123,7 +122,6 @@ class JottaGui(QtGui.QMainWindow):
         self.ui.actionLogin.triggered.connect(self.showModalLogin)
         self.downloading.connect(self.downloadActive)
         self.progress.connect(lambda x: self.ui.progressBar.setValue(x))
-        self.notification.connect(lambda x: self.notify(x))
 
     def login(self, username, password):
         try:
