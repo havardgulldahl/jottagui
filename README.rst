@@ -17,5 +17,5 @@ Install dependency::
   
 Install this::
 
-  pip install git+https://github.com/havardgulldahl/jottalib.git@v0.1.0
+  pip install git+https://github.com/havardgulldahl/jottagui.git@v0.1.0
   
