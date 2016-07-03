@@ -2,8 +2,6 @@
 *.pyc
 dist/
 *.sqlite
-MANIFEST
-README.txt
 bin/
 lib/
 share/
@@ -15,7 +13,6 @@ build/
 *.log
 *.session
 *.rc
-setup.py
 \.cache
 src/build/
 src/jottagui.app/
